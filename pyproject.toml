@@ -1,0 +1,30 @@
+[project]
+name = "rag-pipeline"
+version = "0.1.0"
+description = "RAG system for EPA water treatment regulations with multiple chunking strategies and evaluation"
+requires-python = ">=3.12"
+dependencies = [
+    "llama-index",
+    "llama-index-vector-stores-postgres",
+    "llama-index-embeddings-openai",
+    "psycopg[binary]",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "ragas",
+    "pre-commit",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
