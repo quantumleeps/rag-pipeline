@@ -23,18 +23,19 @@ PDFs are loaded via LlamaIndex and split into chunks using three strategies: **f
 - [uv](https://docs.astral.sh/uv/)
 - Docker (for pgvector)
 - A [Voyage AI](https://www.voyageai.com/) API key
+- An [Anthropic](https://console.anthropic.com/) API key
 
 ### Setup
 
 ```bash
 # Clone and install
-git clone <repo-url>
+git clone https://github.com/quantumleeps/rag-pipeline.git
 cd rag-pipeline
 uv sync --all-extras
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your VOYAGE_API_KEY
+# Edit .env with your VOYAGE_API_KEY and ANTHROPIC_API_KEY
 
 # Download EPA corpus
 bash scripts/download_data.sh
@@ -49,8 +50,11 @@ docker compose up -d
 # Run tests
 uv run pytest
 
-# Run the pipeline (coming soon)
-# uv run python -m rag_pipeline.run
+# Index all 9 variants into pgvector
+uv run python -m rag_pipeline.run
+
+# Evaluate with RAGAS
+uv run python -m eval.evaluate
 ```
 
 ## Project Structure
@@ -60,13 +64,17 @@ rag-pipeline/
   src/rag_pipeline/
     ingest.py          # PDF loading via LlamaIndex
     chunkers.py        # Fixed, semantic, hierarchical strategies
-    embed.py           # Voyage AI embedding (wip)
-    store.py           # pgvector storage (wip)
-    query.py           # Retrieval + LLM generation (wip)
+    embed.py           # Voyage AI embedding model factory
+    store.py           # pgvector storage, per-variant tables
+    query.py           # Retrieval + Claude LLM generation
+    run.py             # Pipeline orchestrator
   eval/
-    evaluate.py        # RAGAS evaluation harness (wip)
+    evaluate.py        # RAGAS evaluation harness
   tests/
     test_chunkers.py   # Chunker unit tests
+    test_embed.py      # Embedding model tests
+    test_store.py      # Table naming tests
+    test_query.py      # Query config tests
   scripts/
     download_data.sh   # Fetches EPA PDFs
   docker-compose.yml   # pgvector service
