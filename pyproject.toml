@@ -8,6 +8,7 @@ dependencies = [
     "llama-index-vector-stores-postgres",
     "llama-index-embeddings-voyageai",
     "voyageai",
+    "llama-index-llms-anthropic",
     "psycopg[binary]",
     "python-dotenv",
 ]
