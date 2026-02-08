@@ -6,7 +6,8 @@ requires-python = ">=3.12"
 dependencies = [
     "llama-index",
     "llama-index-vector-stores-postgres",
-    "llama-index-embeddings-openai",
+    "llama-index-embeddings-voyageai",
+    "voyageai",
     "psycopg[binary]",
     "python-dotenv",
 ]
