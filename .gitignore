@@ -38,6 +38,9 @@ node_modules/
 *.tfvars
 !*.tfvars.example
 
+# === Corpus PDFs (reproduced via scripts/download_data.sh) ===
+data/*.pdf
+
 # === Data files (force-add if intentional) ===
 *.sqlite
 *.db
