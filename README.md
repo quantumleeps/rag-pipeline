@@ -17,6 +17,12 @@ Each combination is stored in pgvector and evaluated with [RAGAS](https://docs.r
 
 Embedding model choice matters ~2.5x more than chunking strategy. `voyage-3-large` dominates across all metrics; `voyage-law-2` underperforms despite being trained on legal/regulatory text. Fixed chunking with `voyage-3-large` is the best overall combination — perfect faithfulness, highest recall, and strong precision.
 
+## Next steps
+
+- **Voyage 4 models** — Voyage AI released a new model family (Jan 2026) with MoE architecture and a shared embedding space across sizes (`voyage-4-large`, `voyage-4`, `voyage-4-lite`). Re-running the 3x3 matrix with these models would test whether the architecture shift closes the gap between general-purpose and domain-specific performance.
+- **Isolate semantic chunking confound** — The semantic splitter currently uses `voyage-3.5` for boundary detection regardless of which model handles retrieval. This means semantic rows in the evaluation matrix reflect a model interaction, not a clean strategy comparison. Re-running semantic chunking with each retrieval model as the splitter would isolate the two variables.
+- **Expand the question set** — 8 questions demonstrates the evaluation framework but is too few for statistical confidence. Adding 15-20 questions across more document types and difficulty levels would strengthen the comparison.
+
 ## How it works
 
 PDFs are loaded via LlamaIndex and split into chunks using three strategies: **fixed-size** (token-window with overlap), **semantic** (embedding-similarity breakpoints), and **hierarchical** (parent-child at multiple granularities). Each set of chunks is embedded with three Voyage AI models — `voyage-3-large` (best general-purpose), `voyage-3.5` (balanced), and `voyage-law-2` (legal/regulatory domain) — producing 9 index variants stored in pgvector. RAGAS evaluates each variant on retrieval precision, answer relevancy, and faithfulness to surface which combination works best for regulatory text.
