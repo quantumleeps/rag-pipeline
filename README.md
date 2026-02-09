@@ -53,8 +53,13 @@ uv run pytest
 # Index all 9 variants into pgvector
 uv run python -m rag_pipeline.run
 
-# Evaluate with RAGAS
+# Query interactively
+uv run python -m rag_pipeline.query "What is the MCL for bromate?"
+uv run python -m rag_pipeline.query "What are the BAT for PFAS removal?" --strategy semantic --model voyage-3-large --show-contexts
+
+# Evaluate with RAGAS (resumes from previous results by default)
 uv run python -m eval.evaluate
+uv run python -m eval.evaluate --fresh  # re-run all variants from scratch
 ```
 
 ## Project Structure
