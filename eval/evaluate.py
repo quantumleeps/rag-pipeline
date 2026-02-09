@@ -267,7 +267,7 @@ def print_results(results: dict[str, Any]) -> None:
         "faithfulness",
         "answer_relevancy",
         "context_precision",
-        "llm_context_recall",
+        "context_recall",
     ]
     print("\t".join(header))
     for variant, data in results.items():

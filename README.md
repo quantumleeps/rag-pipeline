@@ -11,6 +11,12 @@ Ingests 12 publicly available EPA documents (PFAS treatment, disinfection profil
 
 Each combination is stored in pgvector and evaluated with [RAGAS](https://docs.ragas.io/) to measure retrieval precision, answer relevancy, and faithfulness.
 
+## Results
+
+![Evaluation matrix](eval/figures/evaluation_matrix.png)
+
+Embedding model choice matters ~2.5x more than chunking strategy. `voyage-3-large` dominates across all metrics; `voyage-law-2` underperforms despite being trained on legal/regulatory text. Fixed chunking with `voyage-3-large` is the best overall combination — perfect faithfulness, highest recall, and strong precision.
+
 ## How it works
 
 PDFs are loaded via LlamaIndex and split into chunks using three strategies: **fixed-size** (token-window with overlap), **semantic** (embedding-similarity breakpoints), and **hierarchical** (parent-child at multiple granularities). Each set of chunks is embedded with three Voyage AI models — `voyage-3-large` (best general-purpose), `voyage-3.5` (balanced), and `voyage-law-2` (legal/regulatory domain) — producing 9 index variants stored in pgvector. RAGAS evaluates each variant on retrieval precision, answer relevancy, and faithfulness to surface which combination works best for regulatory text.
@@ -75,6 +81,7 @@ rag-pipeline/
     run.py             # Pipeline orchestrator
   eval/
     evaluate.py        # RAGAS evaluation harness
+    visualize.py       # Heatmap generation from results
   tests/
     test_chunkers.py   # Chunker unit tests
     test_embed.py      # Embedding model tests

@@ -72,17 +72,17 @@ def plot_heatmap(matrix: np.ndarray, metric: str, output_path: Path) -> None:
 
 def plot_combined(results: dict, output_path: Path) -> None:
     """Single figure with all 4 metrics as subplots."""
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fig, axes = plt.subplots(2, 2, figsize=(13, 9))
 
     for ax, metric in zip(axes.flat, METRICS):
         matrix = build_matrix(results, metric)
         ax.imshow(matrix, cmap="YlGn", vmin=0, vmax=1, aspect="auto")
 
         ax.set_xticks(range(len(MODELS)))
-        ax.set_xticklabels(MODELS, fontsize=8)
+        ax.set_xticklabels(MODELS, fontsize=9)
         ax.set_yticks(range(len(STRATEGIES)))
-        ax.set_yticklabels(STRATEGIES, fontsize=8)
-        ax.set_title(METRIC_LABELS[metric], fontsize=11, fontweight="bold")
+        ax.set_yticklabels(STRATEGIES, fontsize=9)
+        ax.set_title(METRIC_LABELS[metric], fontsize=12, fontweight="bold", pad=10)
 
         for i in range(len(STRATEGIES)):
             for j in range(len(MODELS)):
@@ -95,18 +95,28 @@ def plot_combined(results: dict, output_path: Path) -> None:
                         f"{val:.3f}",
                         ha="center",
                         va="center",
-                        fontsize=10,
+                        fontsize=11,
                         color=color,
                         fontweight="bold",
                     )
 
     fig.suptitle(
-        "RAG Evaluation: Chunking Strategy × Embedding Model",
-        fontsize=13,
+        "RAGAS Evaluation: Chunking Strategy \u00d7 Embedding Model",
+        fontsize=14,
         fontweight="bold",
-        y=0.98,
     )
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.text(
+        0.5,
+        0.01,
+        "8 EPA regulatory questions evaluated per variant."
+        " Sonnet 4.5 generates, Haiku 4.5 evaluates.",
+        ha="center",
+        fontsize=9,
+        color="#555555",
+    )
+    fig.subplots_adjust(
+        top=0.92, bottom=0.06, left=0.08, right=0.97, hspace=0.35, wspace=0.25
+    )
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
