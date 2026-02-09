@@ -1,9 +1,9 @@
 """RAGAS evaluation harness for the 3×3 chunking × embedding matrix."""
 
+import argparse
 import json
 import logging
 import math
-import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -53,7 +53,7 @@ EVAL_QUESTIONS = [
         "reference": (
             "The CT value for 3-log Giardia"
             " inactivation with ozone at 10\u00b0C is"
-            " approximately 0.72 mg\u00b7min/L."
+            " approximately 1.43 mg\u00b7min/L."
         ),
     },
     {
@@ -113,13 +113,18 @@ EVAL_QUESTIONS = [
 ]
 
 
-def build_eval_dataset() -> EvaluationDataset:
+def build_eval_dataset(
+    question_indices: list[int] | None = None,
+) -> EvaluationDataset:
+    questions = EVAL_QUESTIONS
+    if question_indices is not None:
+        questions = [EVAL_QUESTIONS[i] for i in question_indices]
     samples: list[SingleTurnSampleOrMultiTurnSample] = [
         SingleTurnSample(
             user_input=q["user_input"],
             reference=q["reference"],
         )
-        for q in EVAL_QUESTIONS
+        for q in questions
     ]
     return EvaluationDataset(samples=samples)
 
@@ -144,8 +149,29 @@ def _save_results(results: dict[str, Any]) -> None:
     log.info("Results written to %s", RESULTS_FILE)
 
 
-def run_evaluation(*, resume: bool = True) -> dict[str, Any]:
-    existing = _load_existing_results() if resume else {}
+def _recalculate_scores(
+    per_sample: dict[str, list[float | None]],
+) -> dict[str, float | None]:
+    scores: dict[str, float | None] = {}
+    for metric, values in per_sample.items():
+        valid = [v for v in values if v is not None]
+        scores[metric] = sum(valid) / len(valid) if valid else None
+    return scores
+
+
+def run_evaluation(
+    *,
+    resume: bool = True,
+    question_indices: list[int] | None = None,
+) -> dict[str, Any]:
+    existing = _load_existing_results() if resume or question_indices else {}
+
+    if question_indices is not None and not existing:
+        log.error(
+            "Cannot use --questions without existing results.json to patch into. "
+            "Run a full evaluation first."
+        )
+        raise SystemExit(1)
 
     evaluator_llm = Anthropic(model="claude-haiku-4-5-20251001")
     eval_embeddings = VoyageEmbedding(model_name="voyage-3.5")
@@ -163,13 +189,18 @@ def run_evaluation(*, resume: bool = True) -> dict[str, Any]:
         for model in EmbedModelName:
             variant = f"{strategy.value}_{model.value}"
 
-            if variant in results:
+            if question_indices is None and variant in results:
                 log.info("Skipping %s (already in results file)", variant)
                 continue
 
-            log.info("Evaluating %s", variant)
+            if question_indices is not None and variant not in results:
+                log.warning("Skipping %s (not in results file)", variant)
+                continue
 
-            dataset = build_eval_dataset()
+            qi_label = f" (questions {question_indices})" if question_indices else ""
+            log.info("Evaluating %s%s", variant, qi_label)
+
+            dataset = build_eval_dataset(question_indices)
             query_engine = get_query_engine(strategy, model)
             result = ragas_evaluate(
                 query_engine=query_engine,
@@ -180,33 +211,51 @@ def run_evaluation(*, resume: bool = True) -> dict[str, Any]:
                 run_config=run_config,
             )
 
-            per_sample = {}
-            scores = {}
-            for m in metrics:
-                raw = [_sanitize_for_json(v) for v in result[m.name]]
-                per_sample[m.name] = raw
-                valid = [v for v in raw if v is not None]
-                scores[m.name] = sum(valid) / len(valid) if valid else None
+            if question_indices is not None:
+                # Patch mode: merge new scores into existing results
+                variant_data = results[variant]
+                for m in metrics:
+                    new_scores = [_sanitize_for_json(v) for v in result[m.name]]
+                    for k, qi in enumerate(question_indices):
+                        variant_data["per_sample"][m.name][qi] = new_scores[k]
+                    variant_data["scores"] = _recalculate_scores(
+                        variant_data["per_sample"]
+                    )
 
-            samples = []
-            for sample in dataset.samples:
-                s = cast(SingleTurnSample, sample)
-                samples.append(
-                    {
+                for k, qi in enumerate(question_indices):
+                    s = cast(SingleTurnSample, dataset.samples[k])
+                    variant_data["samples"][qi] = {
                         "user_input": s.user_input,
                         "reference": s.reference,
                         "response": s.response,
                         "retrieved_contexts": s.retrieved_contexts,
                     }
-                )
+            else:
+                # Full mode: write all scores
+                per_sample = {}
+                for m in metrics:
+                    raw = [_sanitize_for_json(v) for v in result[m.name]]
+                    per_sample[m.name] = raw
 
-            results[variant] = {
-                "scores": scores,
-                "per_sample": per_sample,
-                "samples": samples,
-            }
-            log.info("  %s", scores)
+                samples = []
+                for sample in dataset.samples:
+                    s = cast(SingleTurnSample, sample)
+                    samples.append(
+                        {
+                            "user_input": s.user_input,
+                            "reference": s.reference,
+                            "response": s.response,
+                            "retrieved_contexts": s.retrieved_contexts,
+                        }
+                    )
 
+                results[variant] = {
+                    "scores": _recalculate_scores(per_sample),
+                    "per_sample": per_sample,
+                    "samples": samples,
+                }
+
+            log.info("  %s", results[variant]["scores"])
             _save_results(results)
 
     return results
@@ -231,7 +280,25 @@ def print_results(results: dict[str, Any]) -> None:
 
 
 if __name__ == "__main__":
-    fresh = "--fresh" in sys.argv
-    results = run_evaluation(resume=not fresh)
+    parser = argparse.ArgumentParser(description="Run RAGAS evaluation")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Re-run all variants from scratch",
+    )
+    group.add_argument(
+        "--questions",
+        type=int,
+        nargs="+",
+        metavar="IDX",
+        help="Re-evaluate specific questions (0-indexed) across all variants",
+    )
+    args = parser.parse_args()
+
+    results = run_evaluation(
+        resume=not args.fresh,
+        question_indices=args.questions,
+    )
     print("\n--- Results ---")
     print_results(results)

@@ -19,6 +19,7 @@ dev = [
     "ruff",
     "ragas",
     "pre-commit",
+    "matplotlib",
 ]
 
 [build-system]
