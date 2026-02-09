@@ -41,6 +41,9 @@ node_modules/
 # === Corpus PDFs (reproduced via scripts/download_data.sh) ===
 data/*.pdf
 
+# === Evaluation results (reproduced via eval/evaluate.py) ===
+eval/results*.json
+
 # === Data files (force-add if intentional) ===
 *.sqlite
 *.db
