@@ -11,6 +11,8 @@ dependencies = [
     "llama-index-llms-anthropic",
     "psycopg[binary]",
     "python-dotenv",
+    "fastapi",
+    "uvicorn[standard]",
 ]
 
 [project.optional-dependencies]
